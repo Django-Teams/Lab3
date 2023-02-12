@@ -4,6 +4,9 @@ class MySQL:
 
     def __init__(self, host:str, port:int, user:str, password:str, database:str) -> None:
         self.database = database
+        self.conn = None
+        self.cur = None
+        self.table_list = None
 
         try:
             self.conn = mysql.connect(host=host,
@@ -13,12 +16,10 @@ class MySQL:
                                       database=database)
             if self.conn.is_connected():
                 # Перевірка, чи успішне підключення + діагностичні повідомлення
-                db_Info = self.conn.get_server_info()
-                print("Connected to MySQL Server version ", db_Info)
                 self.cur = self.conn.cursor(buffered=True)
-                self.cur.execute("select database();")
+                self.cur.execute("select database()")
                 record = self.cur.fetchone()
-                print("You're connected to database: ", record[0])
+                print("You're connected to MySQL database: ", record[0])
 
         except mysql.Error as e:
             # Виникла якась помилка
@@ -33,15 +34,14 @@ class MySQL:
 
         pass
 
-    def get_tables(self) -> dict[any]:
+    def import_tables(self) -> dict[any]:
         """Генератор для отримання структури БД
 
         Yields:
-            Iterator[ {
+            {
                 "name": str,
-                "columns": list[ dict[ name, type, null, key, extra ] ],
-                "data": list[ tuple[ any ] ]
-            } ]
+                "columns": list[ dict[ name, type, null, key, extra ] ]
+            }
         """
 
         for table in self.table_list:
@@ -52,7 +52,7 @@ class MySQL:
             for column_desc in desc_raw:
                 columns.append({
                     "name": column_desc[0],
-                    "type": column_desc[1],
+                    "type": column_desc[1].decode("utf-8"),
                     "null": column_desc[2],
                     "key": column_desc[3],
                     "extra": column_desc[4],
@@ -63,7 +63,7 @@ class MySQL:
                 "columns": columns
             }
 
-    def get_data(self, table:str) -> tuple[any]:
+    def import_data(self, table:str) -> tuple[any]:
         """Генератор для отримання даних БД
 
         Args:
