@@ -1,13 +1,15 @@
+from . import messages as msg
+
+from typing import Iterator
 import mysql.connector as mysql
 
 class MySQL:
+    
+    dbms_name = "MySQL     "
+    database = None
+    conn = None
 
     def __init__(self, host:str, port:int, user:str, password:str, database:str) -> None:
-        self.database = database
-        self.conn = None
-        self.cur = None
-        self.table_list = None
-
         try:
             self.conn = mysql.connect(host=host,
                                       port=port,
@@ -15,39 +17,38 @@ class MySQL:
                                       password=password,
                                       database=database)
             if self.conn.is_connected():
-                # Перевірка, чи успішне підключення + діагностичні повідомлення
-                self.cur = self.conn.cursor(buffered=True)
-                self.cur.execute("select database()")
-                record = self.cur.fetchone()
-                print("You're connected to MySQL database: ", record[0])
+                cur = self.conn.cursor(buffered=True)
+                cur.execute("select database()")
+                self.database = cur.fetchone()[0]
+                print(msg.Connection.connected.format(dbms=self.dbms_name,db=self.database))
+                cur.close()
 
-        except mysql.Error as e:
-            # Виникла якась помилка
-            print("Error while connecting to MySQL", e)
-
-        finally:
-            if self.conn.is_connected():
-                # Отримання списку таблиць
-                self.cur.execute(f"SELECT table_name FROM information_schema.tables \
-                                WHERE table_schema = '{self.database}'")
-                self.table_list = [item[0] for item in self.cur.fetchall()]
+        except mysql.Error as error:
+            print(msg.Connection.error.format(dbms=self.dbms_name,db=database,e=error))
 
         pass
 
-    def import_tables(self) -> dict[any]:
-        """Генератор для отримання структури БД
+    def export_tables(self) -> Iterator[dict]:
+        """DB schema generator
 
         Yields:
-            {
+            Iterator [{
                 "name": str,
                 "columns": list[ dict[ name, type, null, key, extra ] ]
-            }
+            }]
         """
+        cur = self.conn.cursor(buffered=True)
+        # Get table list
+        cur.execute(
+            "SELECT table_name FROM information_schema.tables "+
+            f"WHERE table_schema = '{self.database}'"
+            )
+        table_list = [item[0] for item in cur.fetchall()]
 
-        for table in self.table_list:
-            # Отримання та обробка даних про колонки в таблиці
-            self.cur.execute(f"DESCRIBE {table}")
-            desc_raw = self.cur.fetchall()
+        # Get column data per table
+        for table in table_list:
+            cur.execute(f"DESCRIBE {table}")
+            desc_raw = cur.fetchall()
             columns = []
             for column_desc in desc_raw:
                 columns.append({
@@ -62,23 +63,28 @@ class MySQL:
                 "name": table,
                 "columns": columns
             }
+        cur.close()
+        print(msg.ExportTables.success.format(dbms=self.dbms_name,db=self.database))
 
-    def import_data(self, table:str) -> tuple[any]:
-        """Генератор для отримання даних БД
+    def export_data(self, table:str) -> Iterator[tuple]:
+        """Table data generator
 
         Args:
-            table (str): Назва таблиці
+            table (str): Table name
 
         Yields:
-            Iterator[tuple[any]]: Дані таблиці
+            Iterator[tuple]: Table data
         """
-        self.cur.execute(f"SELECT * FROM {table}")
-        for row in self.cur.fetchall():
+        cur = self.conn.cursor(buffered=True)
+        
+        cur.execute(f"SELECT * FROM {table}")
+        for row in cur.fetchall():
             yield row
+        cur.close()
+        print(msg.ExportData.success.format(dbms=self.dbms_name,table=table))
 
-    def close_all(self) -> None:
-        """Закриває підключення та курсор
+    def close_conn(self) -> None:
+        """Close DB connection
         """
-        self.cur.close()
         self.conn.close()
-        print("MySQL connection is closed")
+        print(msg.Connection.closed.format(dbms=self.dbms_name,db=self.database))
