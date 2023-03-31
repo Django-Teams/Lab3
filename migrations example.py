@@ -1,11 +1,11 @@
-import migrations.mysql_interface as mysql_interface
-import migrations.postgresql_interface as pg_interface
-import migrations.sqlite_interface as sqlite_interface
+import migrations.MysqlInterface as MysqlInterface
+import migrations.PostgresInterface as PgInterface
+import migrations.SqliteInterface as SqliteInterface
 
 # Connect to all the databases
-mysql_db = mysql_interface.MySQL("localhost", 3306, "root", "admin", "djangolab1")
-pg_db = pg_interface.PostgreSQL("localhost", 5432, "postgres", "admin", "djangolab1")
-sqlite_db = sqlite_interface.SQLite("sqlite.db")
+mysql_db = MysqlInterface.MySQL("localhost", 3306, "root", "admin", "djangolab1")
+pg_db = PgInterface.PostgreSQL("localhost", 5432, "postgres", "admin", "djangolab1")
+sqlite_db = SqliteInterface.SQLite("sqlite.db")
 
 # Juggle the data around
 try:
