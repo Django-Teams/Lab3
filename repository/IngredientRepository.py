@@ -1,3 +1,5 @@
+import pymongo
+
 from core.database.Database import Database
 from model.Ingredient import Ingredient
 
@@ -5,25 +7,24 @@ from model.Ingredient import Ingredient
 class IngredientRepository:
 
     def get_ingredients(self):
-        query = """SELECT * FROM ingredients ORDER BY name"""
-
+        """
+        Зберігає список інгредієнтів з бази даних
+        :return:
+        """
         ingredients = []
-
-        with Database() as con:
-            cursor = con.cursor()
-            cursor.execute(query)
-
-            for i in cursor.fetchall():
+        with Database("MONGO") as db:
+            result = db.ingredients.find().sort("name", pymongo.ASCENDING)
+            for i in result:
                 ingredients.append(self.__extract_ingredient(i))
 
         return ingredients
 
-    def __extract_ingredient(self, data: list) -> Ingredient:
+    def __extract_ingredient(self, data: dict) -> Ingredient:
         """
-        Convert result data to Ingredient object
+        Конвертує дані в об'єкт Ingredient
         :param data:
         :return:
         """
-        ingredient = Ingredient(data[1], data[2], data[3], data[0])
+        ingredient = Ingredient(data["name"], data["price"], data["count"], data["_id"])
 
         return ingredient

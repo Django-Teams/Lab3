@@ -9,6 +9,10 @@ class Database:
             import mysql.connector
             self.__connect_mysql(mysql.connector)
             return self.__connection
+        elif self.name == "MONGO":
+            self.__connect_mongo()
+            db = self.__connection['django']
+            return db
 
         raise ValueError("Не знайдено тип підключення")
 
@@ -19,6 +23,10 @@ class Database:
             password="",
             database="django_lab1"
         )
+
+    def __connect_mongo(self):
+        from pymongo import MongoClient
+        self.__connection = MongoClient()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.__connection.close()

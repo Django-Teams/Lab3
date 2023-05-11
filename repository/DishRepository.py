@@ -1,3 +1,5 @@
+from bson import ObjectId
+
 from core.database.Database import Database
 from model.Dish import Dish
 from model.Ingredient import Ingredient
@@ -6,84 +8,67 @@ from model.Ingredient import Ingredient
 class DishRepository:
 
     def get_dishes(self) -> list[Dish]:
-        query = """SELECT d.*, i.*, di.count FROM dishes d 
-                    INNER JOIN dish_ingredients di ON d.id=di.dish_id 
-                    INNER JOIN ingredients i ON i.id=di.ingredient_id"""
-
+        """
+        Повертає список страв з бази даних
+        :return:
+        """
         dishes = []
 
-        with Database() as con:
-            cursor = con.cursor()
-            cursor.execute(query)
-
-            data = {}
-            for row in cursor.fetchall():
-                if row[0] not in data.keys():
-                    data[row[0]] = [row]
-                else:
-                    data[row[0]].append(row)
-
-            for d in data.values():
-                dishes.append(self.__extract_dish(d))
+        with Database("MONGO") as db:
+            result = db.dishes.aggregate(
+                [{"$lookup": {"from": "ingredients", "localField": "ingredients", "foreignField": "_id",
+                              "as": "ingredients"}}])
+            for row in result:
+                dishes.append(self.__extract_dish(row))
 
         return dishes
 
     def create(self, dish: Dish):
-        query1 = """INSERT INTO dishes VALUES(null,%s)"""
-        query2 = """INSERT INTO dish_ingredients VALUES(null,%s,%s,%s)"""
-
-        ingredients = []
-        with Database() as con:
-            con.autocommit = False
-            cursor = con.cursor()
-            cursor.execute(query1, (dish.name,))
-            idx = cursor.lastrowid
+        """
+        Зберігає страву в базі даних
+        :param dish:
+        :return:
+        """
+        with Database("MONGO") as db:
+            ingredientIds = []
             for ing in dish.ingredients:
-                ingredients.append((idx, ing.idx, ing.count))
-            cursor.executemany(query2, ingredients)
-
-            con.commit()
+                ingredientIds.append(ing.idx)
+            idx = db.dishes.insert_one({"name": dish.name, "ingredients": ingredientIds}).inserted_id
 
         return idx
 
     def update(self, dish: Dish):
-        query1 = """UPDATE dishes SET name=%s WHERE id=%s"""
-        query2 = """DELETE FROM dish_ingredients WHERE dish_id=%s"""
-        query3 = """INSERT INTO dish_ingredients VALUES(null,%s,%s,%s)"""
-
-        ingredients = []
-        with Database() as con:
-            con.autocommit = False
-            cursor = con.cursor()
-            cursor.execute(query1, (dish.name, dish.idx))
-            print(dish.idx)
-            cursor.execute(query2, (dish.idx,))
-
+        """
+        Оновлює страву в базі даних
+        :param dish:
+        :return:
+        """
+        with Database("MONGO") as db:
+            ingredientIds = []
             for ing in dish.ingredients:
-                ingredients.append((dish.idx, ing.idx, ing.count))
-            cursor.executemany(query3, ingredients)
-
-            con.commit()
+                ingredientIds.append(ing.idx)
+            db.dishes.update_one({"_id": dish.idx}, {"$set": {"name": dish.name, "ingredients": ingredientIds}})
 
     def delete(self, dish: Dish):
-        query1 = """DELETE FROM dishes WHERE id=%s"""
-
-        with Database() as con:
-            cursor = con.cursor()
-            cursor.execute(query1, (dish.idx,))
-            con.commit()
-
-    def __extract_dish(self, data: list) -> Dish:
         """
-        Convert result data to Dish object
+        Видаляє страву з бази даних
+        :param dish:
+        :return:
+        """
+        with Database("MONGO") as db:
+            db.dishes.delete_one({"_id": ObjectId(dish.idx)})
+
+    def __extract_dish(self, data: dict) -> Dish:
+        """
+        Конвертує дані в об'єкт Dish
         :param data:
         :return:
         """
         ingredients = []
-        for i in data:
-            ingredient = Ingredient(i[3], i[4], i[5], i[2])
-            ingredients.append((ingredient, i[6]))
+        for i in data["ingredients"]:
+            ingredient = Ingredient(i["name"], i["price"], i["count"], i["_id"])
+            ingredients.append((ingredient, 200))
 
-        dish = Dish(data[0][1], ingredients, data[0][0])
+        dish = Dish(data["name"], ingredients, data["_id"])
 
         return dish
