@@ -6,12 +6,9 @@ class IngredientService:
 
     def get_ingredients(self):
         """
-        Return all ingredients in storage
+        Повертає усі інгредієнти на складі
         :return:
         """
         self.ingredients = IngredientRepository().get_ingredients()
 
         return self.ingredients
-
-    def change_count(self, ):
-        pass

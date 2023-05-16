@@ -6,3 +6,14 @@ class Dish(object):
 
     def __str__(self):
         return self.name
+
+    def to_dict(self):
+        """
+        Повертає об'єкт у вигляді словника
+        :return:
+        """
+        return {
+            "idx": str(self.idx),
+            "name": self.name,
+            "ingredients": self.ingredients
+        }

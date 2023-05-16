@@ -13,7 +13,7 @@ class OrderService:
 
     def order(self, dishes: list[Dish]) -> Order:
         """
-        Make an order
+        Створення замовлення
         :param dishes:
         :return:
         """
@@ -29,7 +29,7 @@ class OrderService:
 
     def get_dishes(self):
         """
-        Return all dishes with price
+        Повертає усі страви з обрахованою ціною
         :return:
         """
         dishes = DishRepository().get_dishes()
@@ -40,7 +40,7 @@ class OrderService:
 
     def __get_name(self, dishes) -> str:
         """
-        Return generated name of the order
+        Генерує назву замовлення
         :param dishes:
         :return:
         """
@@ -48,6 +48,12 @@ class OrderService:
         return ", ".join(names)
 
     def check_ingredients(self, dishes: list) -> list[Dish]:
+        """
+        Перевірка доступності страв для замовлення
+        Перевірка, чи достатньо інгредієнтів на складі
+        :param dishes:
+        :return:
+        """
         storage = {}
         for dish in dishes:
             for ing, count in dish.ingredients:
@@ -67,7 +73,7 @@ class OrderService:
 
     def get_dishes_sum(self, dishes: list) -> float:
         """
-        Return amount due of the order
+        Обраховує ціну замовлення
         :param dishes:
         :return:
         """
@@ -78,7 +84,7 @@ class OrderService:
 
     def get_dish_price(self, dish: Dish) -> float:
         """
-        Return price of the dish
+        Обраховує ціну страви
         :param dish:
         :return:
         """
